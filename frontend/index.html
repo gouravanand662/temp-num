@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Temp Number SMS Receiver</title>
+</head>
+<body>
+  <h2>Temp Number Activation</h2>
+  <label>Country: <input type="text" id="country" /></label><br>
+  <label>Service: <input type="text" id="service" /></label><br>
+  <button onclick="getNumber()">Get Number</button>
+  <div id="output"></div>
+
+  <script>
+    let activationId = null;
+
+    async function getNumber() {
+      const country = document.getElementById('country').value;
+      const service = document.getElementById('service').value;
+      const res = await fetch('https://temp-num-production.up.railway.app/get-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ country, service }),
+      });
+      const data = await res.json();
+      const output = document.getElementById('output');
+
+      if (data.status === 'success') {
+        output.innerHTML = `Number: ${data.number} <br>Waiting for SMS...`;
+        activationId = data.id;
+        pollStatus();
+      } else {
+        output.innerHTML = `Error: ${data.message}`;
+      }
+    }
+
+    async function pollStatus() {
+      if (!activationId) return;
+      const res = await fetch(`https://temp-num-production.up.railway.app/check-status/${activationId}`);
+      const data = await res.json();
+
+      if (data.status.startsWith('STATUS_OK')) {
+        document.getElementById('output').innerHTML = `SMS Code: ${data.status.split(':')[1]}`;
+      } else if (data.status === 'STATUS_WAIT_CODE') {
+        setTimeout(pollStatus, 5000);
+      } else {
+        document.getElementById('output').innerHTML = `Status: ${data.status}`;
+      }
+    }
+  </script>
+</body>
+</html>
